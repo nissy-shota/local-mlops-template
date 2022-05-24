@@ -12,5 +12,6 @@ poetry install
 
 and, please create .env file
 ```bash
-SLACK_WEBHOOK_URL='YOUR SLACK WEBHOOK URL'
+touch .env
 ```
+SLACK_WEBHOOK_URL='YOUR SLACK WEBHOOK URL' in .env file.
