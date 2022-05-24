@@ -14,4 +14,5 @@ and, please create .env file
 ```bash
 touch .env
 ```
-SLACK_WEBHOOK_URL='YOUR SLACK WEBHOOK URL' in .env file.
+
+write SLACK_WEBHOOK_URL='YOUR SLACK WEBHOOK URL' in .env file.
