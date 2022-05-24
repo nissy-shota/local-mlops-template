@@ -6,21 +6,14 @@ from slackweb import Slack
 
 
 class slack_notification:
-    def __init__(self, slack_webhook_url: str, home: str, univ: str) -> None:
+    def __init__(self, slack_webhook_url: str) -> None:
 
         self.slack_webhook_url = slack_webhook_url
         self.slack = Slack(url=self.slack_webhook_url)
 
-        node_name = os.uname().nodename
-
-        if node_name == home:
-            self.place = "home"
-        elif node_name == univ:
-            self.place = "univ"
-        else:
-            self.place = "where?"
+        self.node_name = os.uname().nodename
 
     def send_message(self, message: str = "debug") -> None:
 
-        message += f" running in {self.place}"
+        message += f" running in {self.node_name}"
         self.slack.notify(text=message)

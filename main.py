@@ -26,9 +26,7 @@ def main(cfg: DictConfig) -> None:
     load_dotenv()
 
     notification_slack = notification.slack_notification(
-        os.environ["SLACK_WEBHOOK_URL"],
-        os.environ["HOME"],
-        os.environ["UNIV"],
+        os.environ["SLACK_WEBHOOK_URL"]
     )
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
