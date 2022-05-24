@@ -23,6 +23,15 @@ logger.setLevel(logging.DEBUG)
 @hydra.main(config_path="configs/", config_name="config.yaml")
 def main(cfg: DictConfig) -> None:
 
+    load_dotenv()
+
+    notification_slack = notification.slack_notification(
+        os.environ["SLACK_WEBHOOK_URL"],
+        os.environ["HOME"],
+        os.environ["UNIV"],
+    )
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # define transform
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
@@ -30,17 +39,23 @@ def main(cfg: DictConfig) -> None:
 
     # create dataset and dataloader
     trainset = torchvision.datasets.CIFAR10(
-        root="./data", train=True, download=True, transform=transform
+        root=os.path.join(hydra.utils.get_original_cwd(), "data"),
+        train=True,
+        download=True,
+        transform=transform,
     )
     trainloader = torch.utils.data.DataLoader(
-        trainset, batch_size=cfg.batch_size, shuffle=True, num_workers=2
+        trainset, batch_size=cfg.train.batch_size, shuffle=True, num_workers=2
     )
 
-    testset = torchvision.datasets.CIFAR10(
-        root="./data", train=False, download=True, transform=transform
+    validationset = torchvision.datasets.CIFAR10(
+        root=os.path.join(hydra.utils.get_original_cwd(), "data"),
+        train=False,
+        download=True,
+        transform=transform,
     )
-    testloader = torch.utils.data.DataLoader(
-        testset, batch_size=cfg.batch_size, shuffle=False, num_workers=2
+    validationloader = torch.utils.data.DataLoader(
+        validationset, batch_size=cfg.train.batch_size, shuffle=False, num_workers=2
     )
 
     # cifar10 classes
@@ -57,48 +72,50 @@ def main(cfg: DictConfig) -> None:
         "truck",
     )
 
-    net = simplenet.Net()
+    net = simplenet.Net().to(device)
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr=cfg.learning_rate, momentum=cfg.momentum)
+    optimizer = optim.SGD(
+        net.parameters(), lr=cfg.train.learning_rate, momentum=cfg.train.momentum
+    )
 
-    for epoch in range(cfg.epochs):  # loop over the dataset multiple times
-
-        running_loss = 0.0
-        for i, data in enumerate(trainloader, 0):
+    mlflow.set_tracking_uri(hydra.utils.get_original_cwd() + "/mlruns")
+    for epoch in range(1, cfg.train.epochs + 1):  # loop over the dataset multiple times
+        logger.info(f"Epoch: {epoch}")
+        training_loss = 0.0
+        for data in trainloader:
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = data
-
+            inputs = inputs.to(device)
+            labels = labels.to(device)
             # zero the parameter gradients
             optimizer.zero_grad()
-
             # forward + backward + optimize
             outputs = net(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
+            # logger.info statistics
+            training_loss += loss.item()
 
-            # print statistics
-            running_loss += loss.item()
-            if i % 2000 == 1999:  # print every 2000 mini-batches
-                print(f"[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.3f}")
-                running_loss = 0.0
+        logger.info(f"training loss: {training_loss / len(trainloader)}")
+        mlflow.log_metric(key="train loss", value=training_loss / len(trainloader))
 
-    print("Finished Training")
+        validation_loss = 0.0
+        with torch.no_grad():
+            for data in validationloader:
+                inputs, labels = data
+                inputs = inputs.to(device)
+                labels = labels.to(device)
+                outputs = net(inputs)
+                loss = criterion(outputs, labels)
+                validation_loss += loss.item()
+            logger.info(f"validation loss: {validation_loss / len(validationloader)}")
+            mlflow.log_metric(
+                key="valid loss", value=validation_loss / len(validationloader)
+            )
 
-    correct = 0
-    total = 0
-    with torch.no_grad():
-        for data in testloader:
-            images, labels = data
-            # calculate outputs by running images through the network
-            outputs = net(images)
-            # the class with the highest energy is what we choose as prediction
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-
-    print(f"Accuracy of the network on the 10000 test images: {100 * correct // total}")
+    notification_slack.send_message("Experiment completed.")
 
 
 if __name__ == "__main__":
