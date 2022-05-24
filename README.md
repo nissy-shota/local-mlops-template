@@ -13,6 +13,4 @@ poetry install
 and, please create .env file
 ```bash
 SLACK_WEBHOOK_URL='YOUR SLACK WEBHOOK URL'
-HOME_PC_NAME="YOUR HOME PC NODE NAME"
-UNIV_PC_NAME="YOUR UNIV PC NODE NAME"
 ```
