@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "local-mlops-template"
+version = "0.1.0"
+description = "for experiment management"
+authors = ["nissy-shota <shota.nishiyama44@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.11"
+torch = "^1.11.0"
+numba = "0.55"
+librosa = "^0.9.1"
+matplotlib = "^3.5.2"
+scipy = "^1.8.1"
+PyYAML = "^6.0"
+sklearn = "^0.0"
+mlflow = "^1.26.0"
+hydra-core = "^1.2.0"
+hydra-colorlog = "^1.2.0"
+omegaconf = "^2.2.1"
+tqdm = "^4.64.0"
+slackweb = "^1.0.5"
+python-dotenv = "^0.20.0"
+
+[tool.poetry.dev-dependencies]
+black = {version = "^22.3.0", allow-prereleases = true}
+flake8 = "^4.0.1"
+pytest = "^7.1.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
