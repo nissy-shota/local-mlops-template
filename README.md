@@ -1,7 +1,7 @@
 # local-ml-environment
 
-Template for local experimentation with machine learning.
-We use hydra to manage hyperparameters and mlflow to manage experiments.
+Template for local experimentation with machine learning.  
+I use hydra to manage hyperparameters and mlflow to manage experiments.
 You will be notified via Slack when the experiment is completed.
 
 # build environment
