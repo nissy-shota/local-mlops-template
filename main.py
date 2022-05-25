@@ -29,6 +29,7 @@ def main(cfg: DictConfig) -> None:
         os.environ["SLACK_WEBHOOK_URL"]
     )
     mlflow.set_tracking_uri(hydra.utils.get_original_cwd() + "/mlruns")
+    mlflow.set_experiment(cfg.experiment.name)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # define transform
@@ -78,15 +79,8 @@ def main(cfg: DictConfig) -> None:
         model.parameters(), lr=cfg.train.learning_rate, momentum=cfg.train.momentum
     )
 
-    with mlflow.start_run():
-
-        mlflow.log_params(
-            {
-                "learning_rate": cfg.train.learning_rate,
-                "momentum": cfg.train.momentum,
-                "batch_size": cfg.train.batch_size,
-            }
-        )
+    with mlflow.start_run(run_name=cfg.experiment.run_name):
+        mlflow.log_params(cfg.train)
         for epoch in range(1, cfg.train.epochs + 1):
             logger.info(f"Epoch: {epoch}")
             training_loss = 0.0
@@ -128,7 +122,7 @@ def main(cfg: DictConfig) -> None:
                     step=epoch,
                 )
 
-    mlflow.pytorch.log_model(model, "model")
+        mlflow.pytorch.log_model(model, "model")
 
     if cfg.notification.is_notification:
         notification_slack.send_message("Experiment completed.")
