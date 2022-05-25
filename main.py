@@ -78,7 +78,15 @@ def main(cfg: DictConfig) -> None:
         model.parameters(), lr=cfg.train.learning_rate, momentum=cfg.train.momentum
     )
 
-    with mlflow.start_run() as run:
+    with mlflow.start_run():
+
+        mlflow.log_params(
+            {
+                "learning_rate": cfg.train.learning_rate,
+                "momentum": cfg.train.momentum,
+                "batch_size": cfg.train.batch_size,
+            }
+        )
         for epoch in range(1, cfg.train.epochs + 1):
             logger.info(f"Epoch: {epoch}")
             training_loss = 0.0
@@ -98,7 +106,9 @@ def main(cfg: DictConfig) -> None:
                 training_loss += loss.item()
 
             logger.info(f"training loss: {training_loss / len(trainloader)}")
-            mlflow.log_metric(key="train loss", value=training_loss / len(trainloader))
+            mlflow.log_metric(
+                key="train loss", value=training_loss / len(trainloader), step=epoch
+            )
 
             validation_loss = 0.0
             with torch.no_grad():
@@ -113,11 +123,15 @@ def main(cfg: DictConfig) -> None:
                     f"validation loss: {validation_loss / len(validationloader)}"
                 )
                 mlflow.log_metric(
-                    key="valid loss", value=validation_loss / len(validationloader)
+                    key="valid loss",
+                    value=validation_loss / len(validationloader),
+                    step=epoch,
                 )
 
     mlflow.pytorch.log_model(model, "model")
-    notification_slack.send_message("Experiment completed.")
+
+    if cfg.notification.is_notification:
+        notification_slack.send_message("Experiment completed.")
 
 
 if __name__ == "__main__":
