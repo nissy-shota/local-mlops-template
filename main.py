@@ -28,6 +28,7 @@ def main(cfg: DictConfig) -> None:
     notification_slack = notification.slack_notification(
         os.environ["SLACK_WEBHOOK_URL"]
     )
+    mlflow.set_tracking_uri(hydra.utils.get_original_cwd() + "/mlruns")
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # define transform
@@ -70,49 +71,52 @@ def main(cfg: DictConfig) -> None:
         "truck",
     )
 
-    net = simplenet.Net().to(device)
+    model = simplenet.Net().to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(
-        net.parameters(), lr=cfg.train.learning_rate, momentum=cfg.train.momentum
+        model.parameters(), lr=cfg.train.learning_rate, momentum=cfg.train.momentum
     )
 
-    mlflow.set_tracking_uri(hydra.utils.get_original_cwd() + "/mlruns")
-    for epoch in range(1, cfg.train.epochs + 1):  # loop over the dataset multiple times
-        logger.info(f"Epoch: {epoch}")
-        training_loss = 0.0
-        for data in trainloader:
-            # get the inputs; data is a list of [inputs, labels]
-            inputs, labels = data
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-            # zero the parameter gradients
-            optimizer.zero_grad()
-            # forward + backward + optimize
-            outputs = net(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            # logger.info statistics
-            training_loss += loss.item()
-
-        logger.info(f"training loss: {training_loss / len(trainloader)}")
-        mlflow.log_metric(key="train loss", value=training_loss / len(trainloader))
-
-        validation_loss = 0.0
-        with torch.no_grad():
-            for data in validationloader:
+    with mlflow.start_run() as run:
+        for epoch in range(1, cfg.train.epochs + 1):
+            logger.info(f"Epoch: {epoch}")
+            training_loss = 0.0
+            for data in trainloader:
+                # get the inputs; data is a list of [inputs, labels]
                 inputs, labels = data
                 inputs = inputs.to(device)
                 labels = labels.to(device)
-                outputs = net(inputs)
+                # zero the parameter gradients
+                optimizer.zero_grad()
+                # forward + backward + optimize
+                outputs = model(inputs)
                 loss = criterion(outputs, labels)
-                validation_loss += loss.item()
-            logger.info(f"validation loss: {validation_loss / len(validationloader)}")
-            mlflow.log_metric(
-                key="valid loss", value=validation_loss / len(validationloader)
-            )
+                loss.backward()
+                optimizer.step()
+                # logger.info statistics
+                training_loss += loss.item()
 
+            logger.info(f"training loss: {training_loss / len(trainloader)}")
+            mlflow.log_metric(key="train loss", value=training_loss / len(trainloader))
+
+            validation_loss = 0.0
+            with torch.no_grad():
+                for data in validationloader:
+                    inputs, labels = data
+                    inputs = inputs.to(device)
+                    labels = labels.to(device)
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels)
+                    validation_loss += loss.item()
+                logger.info(
+                    f"validation loss: {validation_loss / len(validationloader)}"
+                )
+                mlflow.log_metric(
+                    key="valid loss", value=validation_loss / len(validationloader)
+                )
+
+    mlflow.pytorch.log_model(model, "model")
     notification_slack.send_message("Experiment completed.")
 
 
