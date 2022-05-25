@@ -122,7 +122,14 @@ def main(cfg: DictConfig) -> None:
                     step=epoch,
                 )
 
+        save_dir = os.path.join(hydra.utils.get_original_cwd(), "results")
+        os.makedirs(save_dir, exist_ok=True)
+        save_path = os.path.join(save_dir, "simple_model.hdf5")
+
+        torch.save(model.state_dict(), save_path)
+
         mlflow.pytorch.log_model(model, "model")
+        mlflow.log_artifacts(save_dir)
 
     if cfg.notification.is_notification:
         notification_slack.send_message("Experiment completed.")
