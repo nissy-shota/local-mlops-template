@@ -1,5 +1,11 @@
+experiment:
+  name: default
+
 train:
   batch_size: 4
   learning_rate: 0.001
   momentum: 0.9
-  epochs: 5
+  epochs: 1
+
+notification:
+  is_notification: True
