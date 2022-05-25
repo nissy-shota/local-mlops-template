@@ -1,5 +1,6 @@
 experiment:
-  name: default
+  name: task1
+  run_name: baseline
 
 train:
   batch_size: 4
@@ -8,4 +9,4 @@ train:
   epochs: 1
 
 notification:
-  is_notification: True
+  is_notification: False
